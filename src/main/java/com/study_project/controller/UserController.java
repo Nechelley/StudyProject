@@ -91,7 +91,7 @@ public class UserController {
 		user.setPassword(changePasswordDto.newPassword());
 
 		userService.changePassword(user, changePasswordDto.currentPassword());
-		return ResponseEntity.ok(new GenericFieldResponseDto("message", "Password changed successfully."));
+		return ResponseEntity.ok(new GenericFieldResponseDto("message", "Password changed successfully"));
 	}
 
 	@DeleteMapping("/{id}")

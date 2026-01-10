@@ -93,7 +93,7 @@ public class UserService {
 		String newPasswordHash = SecurityConfiguration.getEncrypter().encode(user.getPassword());
 
 		if (!SecurityConfiguration.getEncrypter().matches(currentPassword, newPasswordHash)) {
-			throw new BadCredentialsException("Current password is invalid.");
+			throw new BadCredentialsException("Current password is invalid");
 		}
 
 		userToUpdate.changePassword(newPasswordHash);

@@ -17,31 +17,31 @@ public class AuthenticationFailureHandler {
 	@ExceptionHandler(AccountExpiredException.class)
 	@ResponseStatus(HttpStatus.UNAUTHORIZED)
 	public GenericErrorDto handleAccountExpired(AccountExpiredException ex) {
-		return new GenericErrorDto("Your account has expired. Please contact support.");
+		return new GenericErrorDto("Your account has expired. Please contact support");
 	}
 
 	@ExceptionHandler(CredentialsExpiredException.class)
 	@ResponseStatus(HttpStatus.UNAUTHORIZED)
 	public GenericErrorDto handleCredentialsExpired(CredentialsExpiredException ex) {
-		return new GenericErrorDto("Your password has expired. Please change it.");
+		return new GenericErrorDto("Your password has expired. Please change it");
 	}
 
 	@ExceptionHandler(LockedException.class)
 	@ResponseStatus(HttpStatus.UNAUTHORIZED)
 	public GenericErrorDto handleLocked(LockedException ex) {
-		return new GenericErrorDto("Your account is locked.");
+		return new GenericErrorDto("Your account is locked");
 	}
 
 	@ExceptionHandler(DisabledException.class)
 	@ResponseStatus(HttpStatus.UNAUTHORIZED)
 	public GenericErrorDto handleDisabled(DisabledException ex) {
-		return new GenericErrorDto("Your account is disabled.");
+		return new GenericErrorDto("Your account is disabled");
 	}
 
 	@ExceptionHandler(AuthenticationException.class)
 	@ResponseStatus(HttpStatus.BAD_REQUEST)
 	public GenericErrorDto handleGeneral(AuthenticationException ex) {
-		return new GenericErrorDto("Email or password is incorrect.");
+		return new GenericErrorDto("Email or password is incorrect");
 	}
 
 }
