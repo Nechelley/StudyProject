@@ -76,7 +76,7 @@ public class UserController {
 	}
 
 	@PutMapping("/{id}")
-	public ResponseEntity<UserDto> update(@PathVariable Long id, @RequestBody UserDto userDto) throws EntityNonExistentForManipulateException, TryingManipulateAnotherUserStuffException, GenericFieldErrorException, UnauthenticatedUserException {
+	public ResponseEntity<UserDto> update(@PathVariable Long id, @RequestBody UserDto userDto) throws EntityNonExistentForManipulateException, TryingManipulateAnotherUserStuffException, UnauthenticatedUserException {
 		User user = userDto.createUser();
 		user.setId(id);
 		User updatedUser = userService.updateUser(user);
@@ -85,7 +85,7 @@ public class UserController {
 	}
 
 	@PutMapping("/{id}/change-password")
-	public ResponseEntity<GenericFieldResponseDto> changePassword(@PathVariable Long id, @RequestBody ChangePasswordDto changePasswordDto) throws EntityNonExistentForManipulateException, TryingManipulateAnotherUserStuffException, GenericFieldErrorException, UnauthenticatedUserException {
+	public ResponseEntity<GenericFieldResponseDto> changePassword(@PathVariable Long id, @RequestBody ChangePasswordDto changePasswordDto) throws EntityNonExistentForManipulateException, TryingManipulateAnotherUserStuffException, UnauthenticatedUserException {
 		User user = new User();
 		user.setId(id);
 		user.setPassword(changePasswordDto.newPassword());
