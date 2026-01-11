@@ -1,8 +1,9 @@
 package com.study_project.controller.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 
 public record ChangePasswordDto (
-		@NotBlank String currentPassword,
-		@NotBlank String newPassword
+		@NotEmpty String currentPassword,
+		@NotEmpty @Size(min = 10, max = 500) String newPassword
 ){}

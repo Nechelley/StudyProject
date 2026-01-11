@@ -8,22 +8,23 @@ import java.util.List;
 import java.util.Objects;
 
 import com.study_project.configuration.security.SecurityPolicy;
+import com.study_project.controller.dto.group.OnCreate;
 import com.study_project.controller.dto.group.OnPasswordChange;
 import com.study_project.controller.dto.group.OnUpdate;
 import com.study_project.enums.ProfileEnum;
 import jakarta.persistence.*;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
-
+import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.validator.constraints.Length;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import com.study_project.controller.dto.group.OnCreate;
 import com.study_project.model.interfaces.Logable;
 
 @Entity
@@ -36,21 +37,31 @@ public class User implements Logable, Serializable, UserDetails {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
+
 	@NotEmpty(groups = {OnCreate.class, OnUpdate.class})
-	@Length(min = 5, max = 100)
+	@Column(nullable = false, length = 100)
 	private String name;
+
 	@NotEmpty(groups = {OnCreate.class, OnPasswordChange.class})
-	@Length(min = 10, max = 500)
+	@Column(nullable = false, length = 500)
 	private String password;//<TODO> make a better password policy
+
 	@NotEmpty(groups = OnCreate.class)
-	@Length(min = 10, max = 100, groups = OnCreate.class)
 	@Email
-	@Column(unique = true)
+	@Column(unique = true, length = 100)
 	private String email;
 
 	private boolean credentialsNonExpired = true;
+
+	@PastOrPresent
+	@Column(nullable = false)
 	private LocalDateTime passwordChangedAt;
+
+	@PastOrPresent
+	@Column(nullable = false)
 	private LocalDateTime accountCreatedAt;
+
+	@PositiveOrZero
 	private int tokenVersion = 0;
 
 	@ManyToMany(fetch = FetchType.EAGER)
