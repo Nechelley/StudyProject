@@ -70,6 +70,13 @@ public class User implements Logable, Serializable, UserDetails {
 			inverseJoinColumns = {@JoinColumn(name="profile_id")})
 	private List<Profile> profiles = new ArrayList<>();
 
+	@OneToMany(mappedBy = "user",
+			cascade = CascadeType.ALL,
+			orphanRemoval = true,
+			fetch = FetchType.EAGER
+	)
+	private List<Character> characters = new ArrayList<>();
+
 	@Override
 	public Long getIdForLog() {
 		return id;
