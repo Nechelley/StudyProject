@@ -6,6 +6,7 @@ import com.study_project.controller.dto.CharacterResponseDto;
 import com.study_project.model.Character;
 import com.study_project.service.CharacterService;
 import com.study_project.validation.exception.*;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort.Direction;
@@ -39,7 +40,7 @@ public class CharacterController {
 	}
 
 	@PostMapping
-	public ResponseEntity<CharacterResponseDto> createInitialCharacter(@RequestBody CharacterCreationDto characterCreationDto, UriComponentsBuilder uriBuilder) throws GenericErrorException, UnauthenticatedUserException {
+	public ResponseEntity<CharacterResponseDto> createInitialCharacter(@RequestBody @Valid CharacterCreationDto characterCreationDto, UriComponentsBuilder uriBuilder) throws GenericErrorException, UnauthenticatedUserException {
 		Character character = characterCreationDto.createCharacter();
 
 		Character createdCharacter;
@@ -55,7 +56,7 @@ public class CharacterController {
 	}
 
 	@PutMapping("/{id}")
-	public ResponseEntity<CharacterResponseDto> update(@PathVariable Long id, @RequestBody CharacterUpdateDto characterUpdateDto) throws EntityNonExistentForManipulateException, TryingManipulateAnotherUserStuffException, UnauthenticatedUserException {
+	public ResponseEntity<CharacterResponseDto> update(@PathVariable Long id, @RequestBody @Valid CharacterUpdateDto characterUpdateDto) throws EntityNonExistentForManipulateException, TryingManipulateAnotherUserStuffException, UnauthenticatedUserException {
 		Character character = characterUpdateDto.createCharacter();
 		character.setId(id);
 		Character updatedCharacter = characterService.updateCharacter(character);

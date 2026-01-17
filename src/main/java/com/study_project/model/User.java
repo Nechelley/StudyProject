@@ -14,10 +14,7 @@ import com.study_project.controller.dto.group.OnUpdate;
 import com.study_project.enums.ProfileEnum;
 import jakarta.persistence.*;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.PastOrPresent;
-import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -38,15 +35,15 @@ public class User implements Logable, Serializable, UserDetails {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@NotEmpty(groups = {OnCreate.class, OnUpdate.class})
+	@NotBlank(groups = {OnCreate.class, OnUpdate.class})
 	@Column(nullable = false, length = 100)
 	private String name;
 
-	@NotEmpty(groups = {OnCreate.class, OnPasswordChange.class})
+	@NotBlank(groups = {OnCreate.class, OnPasswordChange.class})
 	@Column(nullable = false, length = 500)
 	private String password;//<TODO> make a better password policy
 
-	@NotEmpty(groups = OnCreate.class)
+	@NotBlank(groups = OnCreate.class)
 	@Email
 	@Column(unique = true, length = 100)
 	private String email;

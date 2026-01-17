@@ -1,7 +1,7 @@
 package com.study_project.controller.dto;
 
 import com.study_project.model.User;
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,7 +12,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class UserUpdateDto {
 
-	@NotEmpty
+	@NotBlank
 	@Size(min = 5, max = 100)
 	private String name;
 

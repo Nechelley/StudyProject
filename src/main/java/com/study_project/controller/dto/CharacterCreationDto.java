@@ -4,7 +4,7 @@ import com.study_project.model.Character;
 import com.study_project.model.CharacterAttributes;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,7 +15,7 @@ import org.hibernate.validator.constraints.Length;
 @NoArgsConstructor
 public class CharacterCreationDto {
 
-	@NotEmpty
+	@NotBlank
 	@Length(min = 5, max = 100)
 	private String name;
 	@Min(10)
