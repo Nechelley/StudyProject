@@ -11,7 +11,7 @@ import com.study_project.validation.exception.TryingManipulateAnotherUserStuffEx
 @RestControllerAdvice
 public class TryingManipulateAnotherUserStuffExceptionHandler {
 
-	@ResponseStatus(code = HttpStatus.UNAUTHORIZED)
+	@ResponseStatus(code = HttpStatus.FORBIDDEN)
 	@ExceptionHandler(TryingManipulateAnotherUserStuffException.class)
 	public ResponseEntity<Object> handle() {
 		return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();

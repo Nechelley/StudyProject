@@ -65,12 +65,12 @@ public class UserService {
 	@Transactional
 	@Validated(OnUpdate.class)
 	public User updateUser(@Valid User user) throws TryingManipulateAnotherUserStuffException, EntityNonExistentForManipulateException, UnauthenticatedUserException {
+		sessionService.testIfUserTryingManipulateAnotherUserStuff(user);
+
 		Optional<User> userInDatabase = userRepository.findById(user.getId());
 		if (userInDatabase.isEmpty()) {
 			throw new EntityNonExistentForManipulateException();
 		}
-
-		sessionService.testIfUserTryingManipulateAnotherUserStuff(user);
 
 		User userToUpdate = userInDatabase.get();
 
@@ -82,32 +82,31 @@ public class UserService {
 	@Transactional
 	@Validated(OnPasswordChange.class)
 	public void changePassword(@Valid User user, String currentPassword) throws TryingManipulateAnotherUserStuffException, EntityNonExistentForManipulateException, UnauthenticatedUserException {
+		sessionService.testIfUserTryingManipulateAnotherUserStuff(user);
+
 		Optional<User> userInDatabase = userRepository.findById(user.getId());
 		if (userInDatabase.isEmpty()) {
 			throw new EntityNonExistentForManipulateException();
 		}
 
-		sessionService.testIfUserTryingManipulateAnotherUserStuff(user);
-
 		User userToUpdate = userInDatabase.get();
-		String newPasswordHash = SecurityConfiguration.getEncrypter().encode(user.getPassword());
-
-		if (!SecurityConfiguration.getEncrypter().matches(currentPassword, newPasswordHash)) {
+		if (!SecurityConfiguration.getEncrypter().matches(currentPassword, userToUpdate.getPassword())) {
 			throw new BadCredentialsException("Current password is invalid");
 		}
 
-		userToUpdate.changePassword(newPasswordHash);
+		String newPasswordHash = SecurityConfiguration.getEncrypter().encode(user.getPassword());
+		userInDatabase.get().changePassword(newPasswordHash);
 
 		userRepository.save(userToUpdate);
 	}
 
 	public void deleteUser(Long id) throws EntityNonExistentForManipulateException, TryingManipulateAnotherUserStuffException, UnauthenticatedUserException {
+		sessionService.testIfUserTryingManipulateAnotherUserStuff(new User(id));
+
 		Optional<User> userInDatabase = userRepository.findById(id);
 		if (userInDatabase.isEmpty()) {
 			throw new EntityNonExistentForManipulateException();
 		}
-
-		sessionService.testIfUserTryingManipulateAnotherUserStuff(userInDatabase.get());
 
 		userRepository.deleteById(id);
 	}

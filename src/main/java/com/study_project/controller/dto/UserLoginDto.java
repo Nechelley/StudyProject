@@ -11,10 +11,11 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 public class UserLoginDto {
 
 	@NotBlank
-	@Size(min = 10, max = 100)
+	@Size(min = 10, max = 72)
 	private String email;
 
 	@NotBlank
+	@Size(min = 10, max = 72)
 	private String password;
 
 	public UsernamePasswordAuthenticationToken createAuthenticationToken() {

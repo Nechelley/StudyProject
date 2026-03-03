@@ -1,5 +1,21 @@
 package com.study_project.model;
 
+import com.study_project.configuration.security.SecurityPolicy;
+import com.study_project.controller.dto.group.OnCreate;
+import com.study_project.controller.dto.group.OnPasswordChange;
+import com.study_project.controller.dto.group.OnUpdate;
+import com.study_project.enums.ProfileEnum;
+import com.study_project.model.interfaces.Logable;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.PositiveOrZero;
+import lombok.*;
+import org.jspecify.annotations.NullMarked;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -7,28 +23,12 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-import com.study_project.configuration.security.SecurityPolicy;
-import com.study_project.controller.dto.group.OnCreate;
-import com.study_project.controller.dto.group.OnPasswordChange;
-import com.study_project.controller.dto.group.OnUpdate;
-import com.study_project.enums.ProfileEnum;
-import jakarta.persistence.*;
-
-import jakarta.validation.constraints.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import org.jspecify.annotations.NullMarked;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-
-import com.study_project.model.interfaces.Logable;
-
 @Entity
 @Table(name="user")
 @Getter
 @Setter
 @NoArgsConstructor
+@ToString
 public class User implements Logable, Serializable, UserDetails {
 
 	@Id
@@ -40,12 +40,12 @@ public class User implements Logable, Serializable, UserDetails {
 	private String name;
 
 	@NotBlank(groups = {OnCreate.class, OnPasswordChange.class})
-	@Column(nullable = false, length = 500)
+	@Column(nullable = false, length = 72)
 	private String password;//<TODO> make a better password policy
 
 	@NotBlank(groups = OnCreate.class)
 	@Email
-	@Column(unique = true, length = 100)
+	@Column(unique = true, length = 72)
 	private String email;
 
 	private boolean credentialsNonExpired = true;
@@ -73,6 +73,10 @@ public class User implements Logable, Serializable, UserDetails {
 			fetch = FetchType.EAGER
 	)
 	private List<Character> characters = new ArrayList<>();
+
+	public User(Long id) {
+		this.id = id;
+	}
 
 	@Override
 	public Long getIdForLog() {

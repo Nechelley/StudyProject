@@ -51,15 +51,15 @@ public class UserController {
 
 	@PostMapping
 	public ResponseEntity<UserResponseDto> createBasic(@RequestBody @Valid UserCreationDto userCreationDto, UriComponentsBuilder uriBuilder) throws EmailAlreadyRegisteredException {
-		return createUser(userCreationDto, ProfileEnum.BASIC, uriBuilder);
+		return create(userCreationDto, ProfileEnum.BASIC, uriBuilder);
 	}
 
 	@PostMapping("/admin")
 	public ResponseEntity<UserResponseDto> createAdmin(@RequestBody @Valid UserCreationDto userCreationDto, UriComponentsBuilder uriBuilder) throws EmailAlreadyRegisteredException {
-		return createUser(userCreationDto, ProfileEnum.ADMIN, uriBuilder);
+		return create(userCreationDto, ProfileEnum.ADMIN, uriBuilder);
 	}
 
-	private ResponseEntity<UserResponseDto> createUser(UserCreationDto userCreationDto, ProfileEnum profileEnum, UriComponentsBuilder uriBuilder) throws EmailAlreadyRegisteredException {
+	private ResponseEntity<UserResponseDto> create(UserCreationDto userCreationDto, ProfileEnum profileEnum, UriComponentsBuilder uriBuilder) throws EmailAlreadyRegisteredException {
 		User user = userCreationDto.createUser();
 
 		List<Profile> profiles = new ArrayList<>();
@@ -91,6 +91,7 @@ public class UserController {
 		userService.changePassword(user, changePasswordDto.currentPassword());
 		return ResponseEntity.ok(new GenericFieldResponseDto("message", "Password changed successfully"));
 	}
+	//<TODO> A recover password method for a user who password expired or a user that forgotten his password
 
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Void> delete(@PathVariable Long id) throws TryingManipulateAnotherUserStuffException, EntityNonExistentForManipulateException, UnauthenticatedUserException {

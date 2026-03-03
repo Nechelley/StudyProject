@@ -7,10 +7,12 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 @Getter
 @Setter
 @NoArgsConstructor
+@ToString
 public class UserCreationDto {
 
 	@NotBlank
@@ -18,12 +20,12 @@ public class UserCreationDto {
 	private String name;
 
 	@NotBlank
-	@Size(min = 10, max = 100)
+	@Size(min = 10, max = 72)
 	@Email
 	private String email;
 
 	@NotBlank
-	@Size(min = 10, max = 500)
+	@Size(min = 10, max = 72)
 	private String password;
 
 	public User createUser() {
