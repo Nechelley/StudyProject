@@ -8,17 +8,14 @@ import com.study_project.controller.dto.*;
 import com.study_project.enums.ProfileEnum;
 import com.study_project.factory.UserCreationDtoFactory;
 import com.study_project.factory.UserUpdateDtoFactory;
-import com.study_project.model.Profile;
 import com.study_project.model.User;
+import com.study_project.record.ExecutorUser;
 import com.study_project.repository.UserRepository;
 import com.study_project.setup.MysqlSetup;
 import com.study_project.validation.dto.GenericFieldErrorDto;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -30,7 +27,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -45,10 +41,8 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
 @ActiveProfiles("test")
 @SpringBootTest(webEnvironment = RANDOM_PORT)
 @ContextConfiguration(classes = RestControllerTestConfig.class)
-class UserControllerIT implements MysqlSetup {
+class UserControllerIT extends AbstractIT implements MysqlSetup {
 
-	private static final String ADMIN_REGISTERED_EMAIL = "adminRegisteredEmail@example.com";
-	private static final String BASIC_REGISTERED_EMAIL = "registeredEmail@example.com";
 	private static final String BEARER_PREFIX = "Bearer ";
 	private static final String AUTHORIZATION_HEADER = "Authorization";
 	private static final String USER_PATH = "/user";
@@ -69,10 +63,8 @@ class UserControllerIT implements MysqlSetup {
 	private static final String PASSWORD_WITH_MAXIMUM_CHARACTERS = "72charactersPasswordaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 	private static final String PASSWORD_WITH_LESS_THAN_MINIMUM_CHARACTERS = "pass";
 	private static final String PASSWORD_WITH_MORE_THAN_MAXIMUM_CHARACTERS = "password123aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-	private static final String PASSWORD = "1234567890";
 	private static final String NEW_PASSWORD = "qwertyui10";
 	private static final String WRONG_PASSWORD = "0000000000";
-	private static final String PASSWORD_WITH_MINIMUM_CHARACTERS_IN_HASH = "$2a$10$bZxIK957JA31x66sCP0ive0qsKvuLjT/XEO27hPGjk.rNO8PaAVW6";//password "1234567890" in hash
 
 	@LocalServerPort
 	private Integer port;
@@ -83,57 +75,20 @@ class UserControllerIT implements MysqlSetup {
 	@Autowired
 	private UserRepository userRepository;
 
-	private String adminToken;
-	private String basicToken;
-	private User adminUser;
-	private User basicUser;
-
 	@BeforeEach
-	void setup() throws JsonProcessingException {
+	void beforeSetup() {
 		RestAssured.baseURI = String.format("http://localhost:%s", port);
 
-		//cleanup
+		cleanup();
+	}
+
+	@AfterEach
+	void afterSetup() {
+		cleanup();
+	}
+
+	private void cleanup() {
 		userRepository.deleteAll();
-
-		// seed existing user
-		adminUser = createUserForTesting("big johnny", ADMIN_REGISTERED_EMAIL, ProfileEnum.ADMIN);
-		basicUser = createUserForTesting("johnny", BASIC_REGISTERED_EMAIL, ProfileEnum.BASIC);
-
-		// get authorization
-		adminToken = getToken(ADMIN_REGISTERED_EMAIL, PASSWORD);
-		basicToken = getToken(BASIC_REGISTERED_EMAIL, PASSWORD);
-	}
-
-	private String getToken(String email, String password) throws JsonProcessingException {
-		UserLoginDto userLoginDto = new UserLoginDto();
-		userLoginDto.setEmail(email);
-		userLoginDto.setPassword(password);
-
-		Response response = given()
-				.log().all()
-				.contentType(JSON)
-				.body(objectMapper.writeValueAsString(userLoginDto))
-				.post("/authentication")
-				.then()
-				.log().all()
-				.extract()
-				.response();
-
-		TokenDto tokenDto = response.as(TokenDto.class);
-		return tokenDto.token();
-	}
-
-	private User createUserForTesting(String name, String email, ProfileEnum profileEnum) {
-		User user = new User();
-		user.setName(name);
-		user.setEmail(email);
-		user.setPassword(PASSWORD_WITH_MINIMUM_CHARACTERS_IN_HASH);
-		user.setPasswordChangedAt(LocalDateTime.now().minusDays(1));
-
-		Profile profile = new Profile(profileEnum.getId(), profileEnum.getName());
-		user.setProfiles(List.of(profile));
-
-		return userRepository.save(user);
 	}
 
 	protected void compareUserWithDatabaseUser(UserResponseDto userResponseDto, boolean checkEmail) {
@@ -150,17 +105,38 @@ class UserControllerIT implements MysqlSetup {
 		}
 	}
 
+	protected String generateTokenByProfile(ProfileEnum profileEnum) throws JsonProcessingException {
+		if (ProfileEnum.ADMIN.equals(profileEnum)) {
+			return executorUserFactory.generateAdmin().token();
+		}
+		if (ProfileEnum.BASIC.equals(profileEnum)) {
+			return executorUserFactory.generateBasic().token();
+		}
+		return null;
+	}
+
+	protected ExecutorUser generateExecutorUserByProfile(ProfileEnum executorProfile) throws JsonProcessingException {
+		if (ProfileEnum.ADMIN.equals(executorProfile)) {
+			return executorUserFactory.generateAdmin();
+		}
+		if (ProfileEnum.BASIC.equals(executorProfile)) {
+			return executorUserFactory.generateBasic();
+		}
+		return null;
+	}
+
 	@DisplayName("When creating a user")
 	@Nested
 	class Create {
 
-		protected Response doCreateUserRequest(UserCreationDto userCreationDto, ProfileEnum executorProfile, Boolean useAdminPath) throws JsonProcessingException {
+		protected Response doCreateUserRequest(UserCreationDto userCreationDto, String executorToken, Boolean useAdminPath) throws JsonProcessingException {
 			String path = USER_PATH.concat(useAdminPath ? "/admin" : "");
-			if (ProfileEnum.ADMIN.equals(executorProfile)) {
+
+			if (executorToken != null) {
 				return given()
 						.log().all()
 						.contentType(JSON)
-						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(adminToken))
+						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(executorToken))
 						.body(objectMapper.writeValueAsString(userCreationDto))
 						.post(path)
 						.then()
@@ -168,18 +144,7 @@ class UserControllerIT implements MysqlSetup {
 						.extract()
 						.response();
 			}
-			if (ProfileEnum.BASIC.equals(executorProfile)) {
-				return given()
-						.log().all()
-						.contentType(JSON)
-						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(basicToken))
-						.body(objectMapper.writeValueAsString(userCreationDto))
-						.post(path)
-						.then()
-						.log().all()
-						.extract()
-						.response();
-			}
+
 			return given()
 					.log().all()
 					.contentType(JSON)
@@ -239,7 +204,9 @@ class UserControllerIT implements MysqlSetup {
 			@ParameterizedTest
 			@MethodSource("provideUserSuccessArguments")
 			void createUser_shouldReturn201_whenAllInformationIsCorrect(UserCreationDto userCreationDto, ProfileEnum executorProfile, Boolean useAdminPath) throws JsonProcessingException {
-				Response response = doCreateUserRequest(userCreationDto, executorProfile, useAdminPath);
+				String executorToken = generateTokenByProfile(executorProfile);
+
+				Response response = doCreateUserRequest(userCreationDto, executorToken, useAdminPath);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.CREATED.value());
@@ -366,7 +333,9 @@ class UserControllerIT implements MysqlSetup {
 			@ParameterizedTest
 			@MethodSource("provideUserWithFailSizeNameArguments")
 			void createUser_shouldReturn404_whenIncorrectSizeName(UserCreationDto userCreationDto, ProfileEnum executorProfile, Boolean useAdminPath) throws JsonProcessingException {
-				Response response = doCreateUserRequest(userCreationDto, executorProfile, useAdminPath);
+				String executorToken = generateTokenByProfile(executorProfile);
+
+				Response response = doCreateUserRequest(userCreationDto, executorToken, useAdminPath);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.BAD_REQUEST.value());
@@ -386,7 +355,9 @@ class UserControllerIT implements MysqlSetup {
 			@ParameterizedTest
 			@MethodSource("provideUserWithFailSizeEmailArguments")
 			void createUser_shouldReturn404_whenIncorrectSizeEmail(UserCreationDto userCreationDto, ProfileEnum executorProfile, Boolean useAdminPath) throws JsonProcessingException {
-				Response response = doCreateUserRequest(userCreationDto, executorProfile, useAdminPath);
+				String executorToken = generateTokenByProfile(executorProfile);
+
+				Response response = doCreateUserRequest(userCreationDto, executorToken, useAdminPath);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.BAD_REQUEST.value());
@@ -406,7 +377,9 @@ class UserControllerIT implements MysqlSetup {
 			@ParameterizedTest
 			@MethodSource("provideUserWithFailSizePasswordArguments")
 			void createUser_shouldReturn404_whenIncorrectSizePassword(UserCreationDto userCreationDto, ProfileEnum executorProfile, Boolean useAdminPath) throws JsonProcessingException {
-				Response response = doCreateUserRequest(userCreationDto, executorProfile, useAdminPath);
+				String executorToken = generateTokenByProfile(executorProfile);
+
+				Response response = doCreateUserRequest(userCreationDto, executorToken, useAdminPath);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.BAD_REQUEST.value());
@@ -426,7 +399,9 @@ class UserControllerIT implements MysqlSetup {
 			@ParameterizedTest
 			@MethodSource("provideUserWithBlankFieldArguments")
 			void createUser_shouldReturn404_whenBlankField(UserCreationDto userCreationDto, ProfileEnum executorProfile, Boolean useAdminPath, String blankField) throws JsonProcessingException {
-				Response response = doCreateUserRequest(userCreationDto, executorProfile, useAdminPath);
+				String executorToken = generateTokenByProfile(executorProfile);
+
+				Response response = doCreateUserRequest(userCreationDto, executorToken, useAdminPath);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.BAD_REQUEST.value());
@@ -446,11 +421,20 @@ class UserControllerIT implements MysqlSetup {
 			@ParameterizedTest
 			@MethodSource("provideCorrectRequestArguments")
 			void createUser_shouldReturn404_whenEmailAlreadyRegistered(ProfileEnum executorProfile, Boolean useAdminPath) throws JsonProcessingException {
+				ExecutorUser executorUser = null;
+				if (ProfileEnum.ADMIN.equals(executorProfile)) {
+					executorUser = executorUserFactory.generateAdmin();
+				} else {
+					executorUser = executorUserFactory.generateBasic();
+				}
+
+				User userRegistered = executorUser.user();
+
 				UserCreationDto userCreationDto = UserCreationDtoFactory.aUserCreationDto()
-						.withEmail(BASIC_REGISTERED_EMAIL)
+						.withEmail(userRegistered.getEmail())
 						.build();
 
-				Response response = doCreateUserRequest(userCreationDto, executorProfile, useAdminPath);
+				Response response = doCreateUserRequest(userCreationDto, executorUser.token(), useAdminPath);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.BAD_REQUEST.value());
@@ -470,7 +454,9 @@ class UserControllerIT implements MysqlSetup {
 						.withEmail(MALFORMED_EMAIL)
 						.build();
 
-				Response response = doCreateUserRequest(userCreationDto, executorProfile, useAdminPath);
+				String executorToken = generateTokenByProfile(executorProfile);
+
+				Response response = doCreateUserRequest(userCreationDto, executorToken, useAdminPath);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.BAD_REQUEST.value());
@@ -496,7 +482,9 @@ class UserControllerIT implements MysqlSetup {
 						.withPassword("")
 						.build();
 
-				Response response = doCreateUserRequest(userCreationDto, executorProfile, useAdminPath);
+				String executorToken = generateTokenByProfile(executorProfile);
+
+				Response response = doCreateUserRequest(userCreationDto, executorToken, useAdminPath);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.BAD_REQUEST.value());
@@ -553,7 +541,9 @@ class UserControllerIT implements MysqlSetup {
 				UserCreationDto userCreationDto = UserCreationDtoFactory.aUserCreationDto()
 						.build();
 
-				Response response = doCreateUserRequest(userCreationDto, ProfileEnum.BASIC, true);
+				String executorToken = generateTokenByProfile(ProfileEnum.BASIC);
+
+				Response response = doCreateUserRequest(userCreationDto, executorToken, true);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.FORBIDDEN.value());
@@ -567,25 +557,14 @@ class UserControllerIT implements MysqlSetup {
 	@Nested
 	class Update {
 
-		protected Response doUpdateUserRequest(UserUpdateDto userUpdateDto, ProfileEnum executorProfile, User userToBeUpdated) throws JsonProcessingException {
+		protected Response doUpdateUserRequest(UserUpdateDto userUpdateDto, String executorToken, User userToBeUpdated) throws JsonProcessingException {
 			String path = USER_PATH.concat("/").concat(String.valueOf(userToBeUpdated.getId()));
-			if (ProfileEnum.ADMIN.equals(executorProfile)) {
+
+			if (executorToken != null) {
 				return given()
 						.log().all()
 						.contentType(JSON)
-						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(adminToken))
-						.body(objectMapper.writeValueAsString(userUpdateDto))
-						.put(path)
-						.then()
-						.log().all()
-						.extract()
-						.response();
-			}
-			if (ProfileEnum.BASIC.equals(executorProfile)) {
-				return given()
-						.log().all()
-						.contentType(JSON)
-						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(basicToken))
+						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(executorToken))
 						.body(objectMapper.writeValueAsString(userUpdateDto))
 						.put(path)
 						.then()
@@ -641,9 +620,16 @@ class UserControllerIT implements MysqlSetup {
 			@ParameterizedTest
 			@MethodSource("provideUserSuccessArguments")
 			void updateUser_shouldReturn200_whenAllInformationIsCorrect(UserUpdateDto userUpdateDto, ProfileEnum executorProfile) throws JsonProcessingException {
-				User userToBeUpdated = executorProfile.equals(ProfileEnum.ADMIN) ? adminUser : basicUser;
+				ExecutorUser executorUser = null;
+				if (ProfileEnum.ADMIN.equals(executorProfile)) {
+					executorUser = executorUserFactory.generateAdmin();
+				} else {
+					executorUser = executorUserFactory.generateBasic();
+				}
 
-				Response response = doUpdateUserRequest(userUpdateDto, executorProfile, userToBeUpdated);
+				User userToBeUpdated = executorUser.user();
+
+				Response response = doUpdateUserRequest(userUpdateDto, executorUser.token(), userToBeUpdated);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.OK.value());
@@ -684,9 +670,16 @@ class UserControllerIT implements MysqlSetup {
 			@ParameterizedTest
 			@MethodSource("provideUserWithFailSizeNameArguments")
 			void updateUser_shouldReturn404_whenIncorrectSizeName(UserUpdateDto userUpdateDto, ProfileEnum executorProfile) throws JsonProcessingException {
-				User userToBeUpdated = executorProfile.equals(ProfileEnum.ADMIN) ? adminUser : basicUser;
+				ExecutorUser executorUser = null;
+				if (ProfileEnum.ADMIN.equals(executorProfile)) {
+					executorUser = executorUserFactory.generateAdmin();
+				} else {
+					executorUser = executorUserFactory.generateBasic();
+				}
 
-				Response response = doUpdateUserRequest(userUpdateDto, executorProfile, userToBeUpdated);
+				User userToBeUpdated = executorUser.user();
+
+				Response response = doUpdateUserRequest(userUpdateDto, executorUser.token(), userToBeUpdated);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.BAD_REQUEST.value());
@@ -706,13 +699,20 @@ class UserControllerIT implements MysqlSetup {
 			@ParameterizedTest
 			@EnumSource(ProfileEnum.class)
 			void updateUser_shouldReturn404_whenWithoutName(ProfileEnum executorProfile) throws JsonProcessingException {
+				ExecutorUser executorUser = null;
+				if (ProfileEnum.ADMIN.equals(executorProfile)) {
+					executorUser = executorUserFactory.generateAdmin();
+				} else {
+					executorUser = executorUserFactory.generateBasic();
+				}
+
+				User userToBeUpdated = executorUser.user();
+
 				UserUpdateDto userUpdateDto = UserUpdateDtoFactory.aUserUpdateDto()
 						.withName("")
 						.build();
 
-				User userToBeUpdated = executorProfile.equals(ProfileEnum.ADMIN) ? adminUser : basicUser;
-
-				Response response = doUpdateUserRequest(userUpdateDto, executorProfile, userToBeUpdated);
+				Response response = doUpdateUserRequest(userUpdateDto, executorUser.token(), userToBeUpdated);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.BAD_REQUEST.value());
@@ -735,7 +735,7 @@ class UserControllerIT implements MysqlSetup {
 				UserUpdateDto userUpdateDto = UserUpdateDtoFactory.aUserUpdateDto()
 						.build();
 
-				User userToBeUpdated = targetProfile.equals(ProfileEnum.ADMIN) ? adminUser : basicUser;
+				User userToBeUpdated = targetProfile.equals(ProfileEnum.ADMIN) ? executorUserFactory.generateAdmin().user() : executorUserFactory.generateBasic().user();
 
 				Response response = doUpdateUserRequest(userUpdateDto, null, userToBeUpdated);
 
@@ -750,9 +750,14 @@ class UserControllerIT implements MysqlSetup {
 				UserUpdateDto userUpdateDto = UserUpdateDtoFactory.aUserUpdateDto()
 						.build();
 
-				User userToBeUpdated = executorProfile.equals(ProfileEnum.ADMIN) ? basicUser : adminUser;
+				ExecutorUser adminExecutorUser = executorUserFactory.generateAdmin();
+				ExecutorUser basicExecutorUser = executorUserFactory.generateBasic();
 
-				Response response = doUpdateUserRequest(userUpdateDto, executorProfile, userToBeUpdated);
+				User userToBeUpdated = executorProfile.equals(ProfileEnum.ADMIN) ? adminExecutorUser.user() : basicExecutorUser.user();
+
+				String token = executorProfile.equals(ProfileEnum.ADMIN) ? basicExecutorUser.token() : adminExecutorUser.token();
+
+				Response response = doUpdateUserRequest(userUpdateDto, token, userToBeUpdated);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.UNAUTHORIZED.value());
@@ -769,7 +774,8 @@ class UserControllerIT implements MysqlSetup {
 				User userToBeUpdated = new User();
 				userToBeUpdated.setId(userIdNonExistent);
 
-				Response response = doUpdateUserRequest(userUpdateDto, executorProfile, userToBeUpdated);
+				String token = executorProfile.equals(ProfileEnum.ADMIN) ? executorUserFactory.generateAdmin().token() : executorUserFactory.generateBasic().token();
+				Response response = doUpdateUserRequest(userUpdateDto, token, userToBeUpdated);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.UNAUTHORIZED.value());//Gives unauthorized because the check of permission occurs before the search of the non existent user
@@ -783,23 +789,12 @@ class UserControllerIT implements MysqlSetup {
 	@Nested
 	class getAll {
 
-		protected Response doGetAllUserRequest(ProfileEnum executorProfile) {
-			if (ProfileEnum.ADMIN.equals(executorProfile)) {
+		protected Response doGetAllUserRequest(String executorToken) {
+			if (executorToken != null) {
 				return given()
 						.log().all()
 						.contentType(JSON)
-						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(adminToken))
-						.get(USER_PATH)
-						.then()
-						.log().all()
-						.extract()
-						.response();
-			}
-			if (ProfileEnum.BASIC.equals(executorProfile)) {
-				return given()
-						.log().all()
-						.contentType(JSON)
-						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(basicToken))
+						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(executorToken))
 						.get(USER_PATH)
 						.then()
 						.log().all()
@@ -822,8 +817,13 @@ class UserControllerIT implements MysqlSetup {
 
 			@DisplayName("With a admin user")
 			@Test
-			void getAllUser_shouldReturn200_whenUsingAdminUser() {
-				Response response = doGetAllUserRequest(ProfileEnum.ADMIN);
+			void getAllUser_shouldReturn200_whenUsingAdminUser() throws JsonProcessingException {
+				//creating users in db for the search
+				ExecutorUser executorUser = executorUserFactory.generateAdmin();
+				User adminUser = executorUser.user();
+				User basicUser = executorUserFactory.generateBasic().user();
+
+				Response response = doGetAllUserRequest(executorUser.token());
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.OK.value());
@@ -888,8 +888,8 @@ class UserControllerIT implements MysqlSetup {
 
 			@DisplayName("With a user not authorized")
 			@Test
-			void getAllUser_shouldReturn403_whenNotAuthorized() {
-				Response response = doGetAllUserRequest(ProfileEnum.BASIC);
+			void getAllUser_shouldReturn403_whenNotAuthorized() throws JsonProcessingException {
+				Response response = doGetAllUserRequest(executorUserFactory.generateBasic().token());
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.FORBIDDEN.value());
@@ -903,24 +903,14 @@ class UserControllerIT implements MysqlSetup {
 	@Nested
 	class Get {
 
-		protected Response doGetUserRequest(ProfileEnum executorProfile, User userSearched) {
+		protected Response doGetUserRequest(String executorToken, User userSearched) {
 			String path = USER_PATH.concat("/").concat(String.valueOf(userSearched.getId()));
-			if (ProfileEnum.ADMIN.equals(executorProfile)) {
+
+			if (executorToken != null) {
 				return given()
 						.log().all()
 						.contentType(JSON)
-						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(adminToken))
-						.get(path)
-						.then()
-						.log().all()
-						.extract()
-						.response();
-			}
-			if (ProfileEnum.BASIC.equals(executorProfile)) {
-				return given()
-						.log().all()
-						.contentType(JSON)
-						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(basicToken))
+						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(executorToken))
 						.get(path)
 						.then()
 						.log().all()
@@ -941,44 +931,34 @@ class UserControllerIT implements MysqlSetup {
 		@Nested
 		class Success {
 
-			protected void compareUserWithDatabaseUser(UserResponseDto userResponseDto) {
-				Optional<User> userInDatabase = userRepository.findById(userResponseDto.getId());
-				assertThat(userInDatabase)
-						.isPresent();
-				assertThat(userInDatabase.get().getId())
-						.isEqualTo(userResponseDto.getId());
-				assertThat(userInDatabase.get().getName())
-						.isEqualTo(userResponseDto.getName());
-				assertThat(userInDatabase.get().getEmail())
-						.isEqualTo(userResponseDto.getEmail());
-			}
-
 			@DisplayName("With a user getting his own information")
 			@ParameterizedTest
 			@EnumSource(ProfileEnum.class)
-			void getUser_shouldReturn200_whenUserGettingOwnInformation(ProfileEnum executorProfile) {
-				User user = executorProfile.equals(ProfileEnum.ADMIN) ? adminUser : basicUser;
+			void getUser_shouldReturn200_whenUserGettingOwnInformation(ProfileEnum executorProfile) throws JsonProcessingException {
+				ExecutorUser executorUser = generateExecutorUserByProfile(executorProfile);
 
-				Response response = doGetUserRequest(executorProfile, user);
+				Response response = doGetUserRequest(executorUser.token(), executorUser.user());
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.OK.value());
 
 				UserResponseDto userResponseDto = response.as(UserResponseDto.class);
 				assertThat(userResponseDto.getId())
-						.isEqualTo(user.getId());
+						.isEqualTo(executorUser.user().getId());
 				assertThat(userResponseDto.getName())
-						.isEqualTo(user.getName());
+						.isEqualTo(executorUser.user().getName());
 				assertThat(userResponseDto.getEmail())
-						.isEqualTo(user.getEmail());
+						.isEqualTo(executorUser.user().getEmail());
 
-				compareUserWithDatabaseUser(userResponseDto);
+				compareUserWithDatabaseUser(userResponseDto, true);
 			}
 
 			@DisplayName("With a admin user getting information of another user")
 			@Test
-			void getUser_shouldReturn200_whenAdminUserGettingInformationOfAnotherUser() {
-				Response response = doGetUserRequest(ProfileEnum.ADMIN, basicUser);
+			void getUser_shouldReturn200_whenAdminUserGettingInformationOfAnotherUser() throws JsonProcessingException {
+				String executorAdminToken = executorUserFactory.generateAdmin().token();
+				User basicUser = executorUserFactory.generateBasic().user();
+				Response response = doGetUserRequest(executorAdminToken, basicUser);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.OK.value());
@@ -991,7 +971,7 @@ class UserControllerIT implements MysqlSetup {
 				assertThat(userResponseDto.getEmail())
 						.isEqualTo(basicUser.getEmail());
 
-				compareUserWithDatabaseUser(userResponseDto);
+				compareUserWithDatabaseUser(userResponseDto, true);
 			}
 
 		}
@@ -1002,8 +982,8 @@ class UserControllerIT implements MysqlSetup {
 
 			@DisplayName("With a user not authenticated")
 			@Test
-			void getUser_shouldReturn403_whenNotAuthenticated() {
-				Response response = doGetUserRequest(null, basicUser);
+			void getUser_shouldReturn403_whenNotAuthenticated() throws JsonProcessingException {
+				Response response = doGetUserRequest(null, executorUserFactory.generateBasic().user());
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.FORBIDDEN.value());
@@ -1011,8 +991,8 @@ class UserControllerIT implements MysqlSetup {
 
 			@DisplayName("With a user not authorized")
 			@Test
-			void getUser_shouldReturn401_whenNotAuthorized() {
-				Response response = doGetUserRequest(ProfileEnum.BASIC, adminUser);
+			void getUser_shouldReturn401_whenNotAuthorized() throws JsonProcessingException {
+				Response response = doGetUserRequest(executorUserFactory.generateBasic().token(), executorUserFactory.generateAdmin().user());
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.UNAUTHORIZED.value());
@@ -1020,12 +1000,12 @@ class UserControllerIT implements MysqlSetup {
 
 			@DisplayName("With a search of a non existent user")
 			@Test
-			void getUser_shouldReturn401_whenAdminSearchingNonExistentUser() {
+			void getUser_shouldReturn401_whenAdminSearchingNonExistentUser() throws JsonProcessingException {
 				Long userIdNonExistent = 0L;
 				User userToBeSearched = new User();
 				userToBeSearched.setId(userIdNonExistent);
 
-				Response response = doGetUserRequest(ProfileEnum.ADMIN, userToBeSearched);
+				Response response = doGetUserRequest(executorUserFactory.generateAdmin().token(), userToBeSearched);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.NOT_FOUND.value());
@@ -1033,12 +1013,12 @@ class UserControllerIT implements MysqlSetup {
 
 			@DisplayName("With a search of a non existent user")
 			@Test
-			void getUser_shouldReturn401_whenBasicSearchingNonExistentUser() {
+			void getUser_shouldReturn401_whenBasicSearchingNonExistentUser() throws JsonProcessingException {
 				Long userIdNonExistent = 0L;
 				User userToBeSearched = new User();
 				userToBeSearched.setId(userIdNonExistent);
 
-				Response response = doGetUserRequest(ProfileEnum.BASIC, userToBeSearched);
+				Response response = doGetUserRequest(executorUserFactory.generateBasic().token(), userToBeSearched);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.UNAUTHORIZED.value());//Gives unauthorized because the check of permission occurs before the search of the non existent user
@@ -1052,30 +1032,21 @@ class UserControllerIT implements MysqlSetup {
 	@Nested
 	class Delete {
 
-		protected Response doDeleteUserRequest(ProfileEnum executorProfile, User userDeleted) {
+		protected Response doDeleteUserRequest(String executorToken, User userDeleted) {
 			String path = USER_PATH.concat("/").concat(String.valueOf(userDeleted.getId()));
-			if (ProfileEnum.ADMIN.equals(executorProfile)) {
+
+			if (executorToken != null) {
 				return given()
 						.log().all()
 						.contentType(JSON)
-						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(adminToken))
+						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(executorToken))
 						.delete(path)
 						.then()
 						.log().all()
 						.extract()
 						.response();
 			}
-			if (ProfileEnum.BASIC.equals(executorProfile)) {
-				return given()
-						.log().all()
-						.contentType(JSON)
-						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(basicToken))
-						.delete(path)
-						.then()
-						.log().all()
-						.extract()
-						.response();
-			}
+
 			return given()
 					.log().all()
 					.contentType(JSON)
@@ -1093,15 +1064,15 @@ class UserControllerIT implements MysqlSetup {
 			@DisplayName("With a user deleting his own information")
 			@ParameterizedTest
 			@EnumSource(ProfileEnum.class)
-			void deleteUser_shouldReturn200_whenUserDeletingOwnInformation(ProfileEnum executorProfile) {
-				User user = executorProfile.equals(ProfileEnum.ADMIN) ? adminUser : basicUser;
+			void deleteUser_shouldReturn200_whenUserDeletingOwnInformation(ProfileEnum executorProfile) throws JsonProcessingException {
+				ExecutorUser executorUser = generateExecutorUserByProfile(executorProfile);
 
-				Response response = doDeleteUserRequest(executorProfile, user);
+				Response response = doDeleteUserRequest(executorUser.token(), executorUser.user());
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.NO_CONTENT.value());
 
-				Optional<User> userInDatabase = userRepository.findById(user.getId());
+				Optional<User> userInDatabase = userRepository.findById(executorUser.user().getId());
 				assertThat(userInDatabase)
 						.isNotPresent();
 			}
@@ -1115,8 +1086,8 @@ class UserControllerIT implements MysqlSetup {
 			@DisplayName("With a user not authenticated")
 			@ParameterizedTest
 			@EnumSource(ProfileEnum.class)
-			void deleteUser_shouldReturn403_whenNotAuthenticated(ProfileEnum targetProfile) {
-				User user = targetProfile.equals(ProfileEnum.ADMIN) ? adminUser : basicUser;
+			void deleteUser_shouldReturn403_whenNotAuthenticated(ProfileEnum targetProfile) throws JsonProcessingException {
+				User user = targetProfile.equals(ProfileEnum.ADMIN) ? executorUserFactory.generateAdmin().user() : executorUserFactory.generateBasic().user();
 
 				Response response = doDeleteUserRequest(null, user);
 
@@ -1127,10 +1098,18 @@ class UserControllerIT implements MysqlSetup {
 			@DisplayName("With a user not authorized")
 			@ParameterizedTest
 			@EnumSource(ProfileEnum.class)
-			void deleteUser_shouldReturn401_whenNotAuthorized(ProfileEnum executorProfile) {
-				User user = executorProfile.equals(ProfileEnum.ADMIN) ? basicUser : adminUser;
+			void deleteUser_shouldReturn401_whenNotAuthorized(ProfileEnum executorProfile) throws JsonProcessingException {
+				String executorToken = null;
+				User user = null;
+				if (ProfileEnum.ADMIN.equals(executorProfile)) {
+					executorToken = executorUserFactory.generateAdmin().token();
+					user = executorUserFactory.generateBasic().user();
+				} else if (ProfileEnum.BASIC.equals(executorProfile)) {
+					executorToken = executorUserFactory.generateBasic().token();
+					user = executorUserFactory.generateAdmin().user();
+				}
 
-				Response response = doDeleteUserRequest(executorProfile, user);
+				Response response = doDeleteUserRequest(executorToken, user);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.UNAUTHORIZED.value());
@@ -1139,12 +1118,19 @@ class UserControllerIT implements MysqlSetup {
 			@DisplayName("With a delete of a non existent user")
 			@ParameterizedTest
 			@EnumSource(ProfileEnum.class)
-			void getUser_shouldReturn401_whenDeletingNonExistentUser(ProfileEnum executorProfile) {
+			void getUser_shouldReturn401_whenDeletingNonExistentUser(ProfileEnum executorProfile) throws JsonProcessingException {
 				Long userIdNonExistent = 0L;
 				User userToBeDeleted = new User();
 				userToBeDeleted.setId(userIdNonExistent);
 
-				Response response = doDeleteUserRequest(executorProfile, userToBeDeleted);
+				String executorToken = null;
+				if (ProfileEnum.ADMIN.equals(executorProfile)) {
+					executorToken = executorUserFactory.generateAdmin().token();
+				} else if (ProfileEnum.BASIC.equals(executorProfile)) {
+					executorToken = executorUserFactory.generateBasic().token();
+				}
+
+				Response response = doDeleteUserRequest(executorToken, userToBeDeleted);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.UNAUTHORIZED.value());//Gives unauthorized because the check of permission occurs before the search of the non existent user
@@ -1158,25 +1144,14 @@ class UserControllerIT implements MysqlSetup {
 	@Nested
 	class ChangePassword {
 
-		protected Response doChangePasswordRequest(ProfileEnum executorProfile, User userPasswordChanged, ChangePasswordDto changePasswordDto) throws JsonProcessingException {
+		protected Response doChangePasswordRequest(String executorToken, User userPasswordChanged, ChangePasswordDto changePasswordDto) throws JsonProcessingException {
 			String path = USER_PATH.concat("/").concat(String.valueOf(userPasswordChanged.getId()).concat("/change-password"));
-			if (ProfileEnum.ADMIN.equals(executorProfile)) {
+
+			if (executorToken != null) {
 				return given()
 						.log().all()
 						.contentType(JSON)
-						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(adminToken))
-						.body(objectMapper.writeValueAsString(changePasswordDto))
-						.put(path)
-						.then()
-						.log().all()
-						.extract()
-						.response();
-			}
-			if (ProfileEnum.BASIC.equals(executorProfile)) {
-				return given()
-						.log().all()
-						.contentType(JSON)
-						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(basicToken))
+						.header(AUTHORIZATION_HEADER, BEARER_PREFIX.concat(executorToken))
 						.body(objectMapper.writeValueAsString(changePasswordDto))
 						.put(path)
 						.then()
@@ -1212,11 +1187,11 @@ class UserControllerIT implements MysqlSetup {
 			@ParameterizedTest
 			@MethodSource("provideCorrectPasswordArguments")
 			void changePassword_shouldReturn200_whenUserChangingHisOwnInformation(ProfileEnum executorProfile, String newPassword) throws JsonProcessingException {
-				User user = executorProfile.equals(ProfileEnum.ADMIN) ? adminUser : basicUser;
+				ExecutorUser executorUser = generateExecutorUserByProfile(executorProfile);
 
-				ChangePasswordDto changePasswordDto = new ChangePasswordDto(PASSWORD, newPassword);
+				ChangePasswordDto changePasswordDto = new ChangePasswordDto(executorUserFactory.getStaticPassword(), newPassword);
 
-				Response response = doChangePasswordRequest(executorProfile, user, changePasswordDto);
+				Response response = doChangePasswordRequest(executorUser.token(), executorUser.user(), changePasswordDto);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.OK.value());
@@ -1229,14 +1204,14 @@ class UserControllerIT implements MysqlSetup {
 				assertThat(message.getMessage())
 						.isEqualTo("Password changed successfully");
 
-				Optional<User> userInDatabase = userRepository.findById(user.getId());
+				Optional<User> userInDatabase = userRepository.findById(executorUser.user().getId());
 				assertThat(userInDatabase)
 						.isPresent();
 				assertThat(SecurityConfiguration.getEncrypter().matches(newPassword, userInDatabase.get().getPassword()));
 				assertThat(userInDatabase.get().getPasswordChangedAt())
-						.isAfter(user.getPasswordChangedAt());
+						.isAfter(executorUser.user().getPasswordChangedAt());
 				assertThat(userInDatabase.get().getTokenVersion())
-						.isGreaterThan(user.getTokenVersion());
+						.isGreaterThan(executorUser.user().getTokenVersion());
 			}
 
 		}
@@ -1259,9 +1234,9 @@ class UserControllerIT implements MysqlSetup {
 			@ParameterizedTest
 			@EnumSource(ProfileEnum.class)
 			void changePassword_shouldReturn403_whenNotAuthenticated(ProfileEnum targetProfile) throws JsonProcessingException {
-				User user = targetProfile.equals(ProfileEnum.ADMIN) ? adminUser : basicUser;
+				User user = targetProfile.equals(ProfileEnum.ADMIN) ? executorUserFactory.generateAdmin().user() : executorUserFactory.generateBasic().user();
 
-				ChangePasswordDto changePasswordDto = new ChangePasswordDto(PASSWORD, NEW_PASSWORD);
+				ChangePasswordDto changePasswordDto = new ChangePasswordDto(executorUserFactory.getStaticPassword(), NEW_PASSWORD);
 
 				Response response = doChangePasswordRequest(null, user, changePasswordDto);
 
@@ -1273,11 +1248,19 @@ class UserControllerIT implements MysqlSetup {
 			@ParameterizedTest
 			@EnumSource(ProfileEnum.class)
 			void changePassword_shouldReturn401_whenNotAuthorized(ProfileEnum executorProfile) throws JsonProcessingException {
-				User user = executorProfile.equals(ProfileEnum.ADMIN) ? basicUser : adminUser;
+				String executorToken = null;
+				User user = null;
+				if (ProfileEnum.ADMIN.equals(executorProfile)) {
+					executorToken = executorUserFactory.generateAdmin().token();
+					user = executorUserFactory.generateBasic().user();
+				} else if (ProfileEnum.BASIC.equals(executorProfile)) {
+					executorToken = executorUserFactory.generateBasic().token();
+					user = executorUserFactory.generateAdmin().user();
+				}
 
-				ChangePasswordDto changePasswordDto = new ChangePasswordDto(PASSWORD, NEW_PASSWORD);
+				ChangePasswordDto changePasswordDto = new ChangePasswordDto(executorUserFactory.getStaticPassword(), NEW_PASSWORD);
 
-				Response response = doChangePasswordRequest(executorProfile, user, changePasswordDto);
+				Response response = doChangePasswordRequest(executorToken, user, changePasswordDto);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.UNAUTHORIZED.value());
@@ -1291,9 +1274,16 @@ class UserControllerIT implements MysqlSetup {
 				User userToBeChanged = new User();
 				userToBeChanged.setId(userIdNonExistent);
 
-				ChangePasswordDto changePasswordDto = new ChangePasswordDto(PASSWORD, NEW_PASSWORD);
+				ChangePasswordDto changePasswordDto = new ChangePasswordDto(executorUserFactory.getStaticPassword(), NEW_PASSWORD);
 
-				Response response = doChangePasswordRequest(executorProfile, userToBeChanged, changePasswordDto);
+				String executorToken = null;
+				if (ProfileEnum.ADMIN.equals(executorProfile)) {
+					executorToken = executorUserFactory.generateAdmin().token();
+				} else if (ProfileEnum.BASIC.equals(executorProfile)) {
+					executorToken = executorUserFactory.generateBasic().token();
+				}
+
+				Response response = doChangePasswordRequest(executorToken, userToBeChanged, changePasswordDto);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.UNAUTHORIZED.value());//Gives unauthorized because the check of permission occurs before the search of the non existent user
@@ -1303,11 +1293,11 @@ class UserControllerIT implements MysqlSetup {
 			@ParameterizedTest
 			@EnumSource(ProfileEnum.class)
 			void changePassword_shouldReturn404_whenCurrentPasswordIncorrect(ProfileEnum executorProfile) throws JsonProcessingException {
-				User user = executorProfile.equals(ProfileEnum.ADMIN) ? adminUser : basicUser;
+				ExecutorUser executorUser = generateExecutorUserByProfile(executorProfile);
 
 				ChangePasswordDto changePasswordDto = new ChangePasswordDto(WRONG_PASSWORD, NEW_PASSWORD);
 
-				Response response = doChangePasswordRequest(executorProfile, user, changePasswordDto);
+				Response response = doChangePasswordRequest(executorUser.token(), executorUser.user(), changePasswordDto);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.BAD_REQUEST.value());
@@ -1325,11 +1315,11 @@ class UserControllerIT implements MysqlSetup {
 			@ParameterizedTest
 			@MethodSource("provideFailSizePasswordArguments")
 			void changePassword_shouldReturn404_whenPasswordSizeIsIncorrect(ProfileEnum executorProfile, String newPassword) throws JsonProcessingException {
-				User user = executorProfile.equals(ProfileEnum.ADMIN) ? adminUser : basicUser;
+				ExecutorUser executorUser = generateExecutorUserByProfile(executorProfile);
 
-				ChangePasswordDto changePasswordDto = new ChangePasswordDto(PASSWORD, newPassword);
+				ChangePasswordDto changePasswordDto = new ChangePasswordDto(executorUserFactory.getStaticPassword(), newPassword);
 
-				Response response = doChangePasswordRequest(executorProfile, user, changePasswordDto);
+				Response response = doChangePasswordRequest(executorUser.token(), executorUser.user(), changePasswordDto);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.BAD_REQUEST.value());
@@ -1349,11 +1339,11 @@ class UserControllerIT implements MysqlSetup {
 			@ParameterizedTest
 			@EnumSource(ProfileEnum.class)
 			void changePassword_shouldReturn404_whenBlankField(ProfileEnum executorProfile) throws JsonProcessingException {
-				User user = executorProfile.equals(ProfileEnum.ADMIN) ? adminUser : basicUser;
+				ExecutorUser executorUser = generateExecutorUserByProfile(executorProfile);
 
-				ChangePasswordDto changePasswordDto = new ChangePasswordDto(PASSWORD, "");
+				ChangePasswordDto changePasswordDto = new ChangePasswordDto(executorUserFactory.getStaticPassword(), "");
 
-				Response response = doChangePasswordRequest(executorProfile, user, changePasswordDto);
+				Response response = doChangePasswordRequest(executorUser.token(), executorUser.user(), changePasswordDto);
 
 				assertThat(response.statusCode())
 						.isEqualTo(HttpStatus.BAD_REQUEST.value());
