@@ -32,6 +32,7 @@ public class ExecutorUserFactory {
 	private static final String ADMIN_EMAIL = "adminEmail@example.com";
 	private static final String BASIC_NAME = "basic basic";
 	private static final String BASIC_EMAIL = "basicEmail@example.com";
+	private static final String BASIC_SECONDARY_EMAIL = "basicSecondaryEmail@example.com";
 	private static final String PASSWORD = "1234567890";
 	private static final String PASSWORD_WITH_MINIMUM_CHARACTERS_IN_HASH = "$2a$10$bZxIK957JA31x66sCP0ive0qsKvuLjT/XEO27hPGjk.rNO8PaAVW6";//password "1234567890" in hash
 
@@ -45,6 +46,12 @@ public class ExecutorUserFactory {
 	public ExecutorUser generateBasic() throws JsonProcessingException {
 		User user = createUserForTesting(BASIC_NAME, BASIC_EMAIL, ProfileEnum.BASIC);
 		String token = getToken(BASIC_EMAIL, PASSWORD);
+		return new ExecutorUser(user, token);
+	}
+
+	public ExecutorUser generateBasicSecondary() throws JsonProcessingException {
+		User user = createUserForTesting(BASIC_NAME, BASIC_SECONDARY_EMAIL, ProfileEnum.BASIC);
+		String token = getToken(BASIC_SECONDARY_EMAIL, PASSWORD);
 		return new ExecutorUser(user, token);
 	}
 

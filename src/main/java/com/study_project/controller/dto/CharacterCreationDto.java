@@ -5,6 +5,7 @@ import com.study_project.model.CharacterAttributes;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -18,27 +19,34 @@ public class CharacterCreationDto {
 	@NotBlank
 	@Length(min = 5, max = 100)
 	private String name;
+	@NotNull
 	@Min(10)
 	@Max(500)
-	private short strength;
+	private Short strength;
+	@NotNull
 	@Min(10)
 	@Max(500)
-	private short dexterity;
+	private Short dexterity;
+	@NotNull
 	@Min(10)
 	@Max(500)
-	private short intelligence;
+	private Short intelligence;
+	@NotNull
 	@Min(10)
 	@Max(500)
-	private short constitution;
+	private Short constitution;
+	@NotNull
 	@Min(10)
 	@Max(500)
-	private short willpower;
+	private Short willpower;
+	@NotNull
 	@Min(10)
 	@Max(500)
-	private short perception;
+	private Short perception;
+	@NotNull
 	@Min(10)
 	@Max(500)
-	private short luck;
+	private Short luck;
 
 	public Character createCharacter() {
 		Character character = new Character();

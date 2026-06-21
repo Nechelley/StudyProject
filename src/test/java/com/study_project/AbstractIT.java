@@ -1,5 +1,6 @@
 package com.study_project;
 
+import com.study_project.factory.CharacterFactory;
 import com.study_project.factory.ExecutorUserFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -11,5 +12,8 @@ public abstract class AbstractIT {
 
 	@Autowired
 	protected ExecutorUserFactory executorUserFactory;
+
+	@Autowired
+	protected CharacterFactory characterFactory;
 
 }
