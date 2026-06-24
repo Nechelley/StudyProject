@@ -1,7 +1,8 @@
 package com.study_project.controller.dto;
 
-import com.study_project.model.Character;
-import com.study_project.model.CharacterAttributes;
+import com.study_project.model.Enemy;
+import com.study_project.model.UnitAttributes;
+import jakarta.persistence.Column;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -14,11 +15,15 @@ import org.hibernate.validator.constraints.Length;
 @Getter
 @Setter
 @NoArgsConstructor
-public class CharacterCreationDto {
+public class EnemyCreationDto {
 
 	@NotBlank
 	@Length(min = 5, max = 100)
 	private String name;
+	@NotNull
+	@Min(1)
+	@Max(99)
+	private Short level;
 	@NotNull
 	@Min(10)
 	@Max(500)
@@ -48,20 +53,20 @@ public class CharacterCreationDto {
 	@Max(500)
 	private Short luck;
 
-	public Character createCharacter() {
-		Character character = new Character();
-		character.setName(name);
+	public Enemy createEnemy() {
+		Enemy enemy = new Enemy();
+		enemy.setName(name);
 
-		character.setBaseCharacterAttributes(new CharacterAttributes());
-		character.getBaseCharacterAttributes().setLevel((short) 1);
-		character.getBaseCharacterAttributes().setStrength(strength);
-		character.getBaseCharacterAttributes().setDexterity(dexterity);
-		character.getBaseCharacterAttributes().setIntelligence(intelligence);
-		character.getBaseCharacterAttributes().setConstitution(constitution);
-		character.getBaseCharacterAttributes().setWillpower(willpower);
-		character.getBaseCharacterAttributes().setPerception(perception);
-		character.getBaseCharacterAttributes().setLuck(luck);
-		return character;
+		enemy.setBaseUnitAttributes(new UnitAttributes());
+		enemy.getBaseUnitAttributes().setLevel(level);
+		enemy.getBaseUnitAttributes().setStrength(strength);
+		enemy.getBaseUnitAttributes().setDexterity(dexterity);
+		enemy.getBaseUnitAttributes().setIntelligence(intelligence);
+		enemy.getBaseUnitAttributes().setConstitution(constitution);
+		enemy.getBaseUnitAttributes().setWillpower(willpower);
+		enemy.getBaseUnitAttributes().setPerception(perception);
+		enemy.getBaseUnitAttributes().setLuck(luck);
+		return enemy;
 	}
 
 }

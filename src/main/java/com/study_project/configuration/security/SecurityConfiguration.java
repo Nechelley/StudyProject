@@ -46,10 +46,15 @@ public class SecurityConfiguration {
 						.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 						.authorizeHttpRequests(req -> {
 							req.requestMatchers(HttpMethod.POST, "/authentication").permitAll();
+
 							req.requestMatchers(HttpMethod.POST, "/user").permitAll();
 							req.requestMatchers(HttpMethod.POST, "/user/admin").hasAuthority(ProfileEnum.ADMIN.getName());
 							req.requestMatchers(HttpMethod.GET, "/user").hasAuthority(ProfileEnum.ADMIN.getName());
 							req.requestMatchers(HttpMethod.GET, "/user/{id}").authenticated();
+
+							req.requestMatchers(HttpMethod.POST, "/enemy").hasAuthority(ProfileEnum.ADMIN.getName());
+							req.requestMatchers(HttpMethod.PUT, "/enemy/{id}").hasAuthority(ProfileEnum.ADMIN.getName());
+							req.requestMatchers(HttpMethod.DELETE, "/enemy/{id}").hasAuthority(ProfileEnum.ADMIN.getName());
 							req.anyRequest().authenticated();
 						})
 						.addFilterBefore(new AuthenticationByTokenFilter(tokenService, userRepository), UsernamePasswordAuthenticationFilter.class)

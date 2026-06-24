@@ -15,11 +15,12 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name="\"character\"")
+@Inheritance(strategy = InheritanceType.JOINED)
+@Table(name="unit")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Character implements Logable, Serializable {
+public class Unit implements Logable, Serializable {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,14 +37,11 @@ public class Character implements Logable, Serializable {
 	@Valid
 	@NotNull(groups = OnCreate.class)
 	@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
-	private CharacterAttributes baseCharacterAttributes;
-
-	@ManyToOne(optional = false, fetch = FetchType.LAZY)
-	@JoinColumn(name = "user_id", nullable = false)
-	private User user;
+	private UnitAttributes baseUnitAttributes;
 
 	@Override
 	public Long getIdForLog() {
 		return id;
 	}
+
 }

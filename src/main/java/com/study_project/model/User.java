@@ -72,7 +72,7 @@ public class User implements Logable, Serializable, UserDetails {
 			orphanRemoval = true,
 			fetch = FetchType.EAGER
 	)
-	private List<Character> characters = new ArrayList<>();
+	private List<PlayerCharacter> playerCharacters = new ArrayList<>();
 
 	public User(Long id) {
 		this.id = id;

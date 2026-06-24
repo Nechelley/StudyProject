@@ -1,6 +1,6 @@
 package com.study_project.controller.dto;
 
-import com.study_project.model.Character;
+import com.study_project.model.Enemy;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,16 +10,17 @@ import org.hibernate.validator.constraints.Length;
 @Getter
 @Setter
 @NoArgsConstructor
-public class CharacterUpdateDto {
+public class EnemyUpdateDto {
 
 	@NotBlank
 	@Length(min = 5, max = 100)
 	private String name;
 
-	public Character createCharacter() {
-		Character character = new Character();
-		character.setName(name);
-		return character;
+
+	public Enemy createEnemy() {
+		Enemy enemy = new Enemy();
+		enemy.setName(name);
+		return enemy;
 	}
 
 }

@@ -11,11 +11,11 @@ import lombok.Setter;
 import java.io.Serializable;
 
 @Entity
-@Table(name="character_attributes")
+@Table(name="unit_attributes")
 @Getter
 @Setter
 @NoArgsConstructor
-public class CharacterAttributes implements Logable, Serializable {
+public class UnitAttributes implements Logable, Serializable {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
